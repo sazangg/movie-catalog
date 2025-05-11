@@ -91,7 +91,7 @@ def export_catalog_to_json(catalog: Catalog, path: Path | None = None) -> Path:
         path.parent.mkdir(parents=True, exist_ok=True)
 
         tmp = path.with_suffix(path.suffix + ".tmp")
-        tmp.write_text(catalog.to_json(), encoding="utf-8", newline="")
+        tmp.write_text(catalog.to_json(), encoding="utf-8")
         tmp.replace(path)
     except Exception:
         logger.exception("Failed to export catalog to JSON at %s", path)
@@ -114,7 +114,7 @@ def import_catalog_from_json(path: Path | None = None) -> "Catalog":
         return Catalog()
 
     try:
-        raw = json.loads(path.read_text(encoding="utf-8", newline=""))
+        raw = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as err:
         logger.exception("The file is not a valid JSON format")
         raise ValueError("Not a valid JSON file") from err
