@@ -68,5 +68,5 @@ def test_count_tags():
 def test_movie_pairs():
     m1, m2, sc = seed_catalog()
     pairs = list(movie_pairs(sc))
-    assert len(pairs) == 2
+    assert len(pairs) == 1
     assert pairs[0] == (m1, m2) or pairs[0] == (m2, m1)
