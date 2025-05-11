@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "movie-catalog"
+version = "0.1.0"
+description = "A Flask API to manage your movie collection"
+authors = [
+  { name="Younes Lesfer", email="younes.lesfer@gmail.com" }
+]
+# Specify Python version compatibility
+requires-python = ">=3.10"
+# License for PyPI metadata
+license = { text = "MIT" }
+# Classifiers for PyPI
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Framework :: Flask",
+  "License :: OSI Approved :: MIT License"
+]
+# Runtime dependencies
+dependencies = [
+  "flask>=2.2,<3.0",
+  "aiohttp>=3.8",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.0",
+  "pytest-asyncio",
+  "mypy>=1.0"
+]
+
+# Entry point for console script
+[project.scripts]
+movie-catalog = "catalog.api:main"
