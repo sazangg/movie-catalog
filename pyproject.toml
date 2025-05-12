@@ -37,3 +37,5 @@ dev = [
 # Entry point for console script
 [project.scripts]
 movie-catalog = "catalog.api:main"
+
+

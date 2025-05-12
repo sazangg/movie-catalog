@@ -62,6 +62,19 @@ class Catalog:
     def to_json(self) -> str:
         return json.dumps([asdict(m) for m in self.movies], indent=2)
 
+    def find_by_id(self, movie_id: int) -> Movie | None:
+        for m in self.movies:
+            if m.id == movie_id:
+                return m
+        return None
+
+    def remove(self, movie_id: int) -> bool:
+        for i, m in enumerate(self.movies):
+            if m.id == movie_id:
+                del self.movies[i]
+                return True
+        return False
+
     @classmethod
     def from_json(cls, data: list[dict]) -> "Catalog":
         cat = cls()
@@ -71,7 +84,7 @@ class Catalog:
 
             entry["id"] = int(entry["id"])
             entry["year"] = int(entry["year"])
-            entry["rating"] = float(entry["rating"])
+            entry["rating"] = float(entry.get("rating", 0))
             entry["genres"] = entry.get("genres", [])
             entry["tags"] = entry.get("tags", [])
             cat.add_movie(Movie.from_dict(entry))
