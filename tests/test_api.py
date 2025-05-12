@@ -2,7 +2,7 @@ import csv
 import io
 
 import pytest
-from catalog.api import create_app
+from catalog.api.api import create_app
 
 
 @pytest.fixture
@@ -14,7 +14,7 @@ def client(tmp_path, monkeypatch):
 
     cfg = {"CATALOG_PATH": str(tmp_path / "movies.json")}
 
-    monkeypatch.setattr("catalog.api.import_catalog_from_json", lambda path: seed)
+    monkeypatch.setattr("catalog.api.api.import_catalog_from_json", lambda path: seed)
 
     exported = {}
 
@@ -26,7 +26,9 @@ def client(tmp_path, monkeypatch):
 
         return real_export(catalog, path)
 
-    monkeypatch.setattr("catalog.api.export_catalog_to_json", fake_export)
+    monkeypatch.setattr("catalog.api.movies.export_catalog_to_json", fake_export)
+    monkeypatch.setattr("catalog.api.import_export.export_catalog_to_json", fake_export)
+    monkeypatch.setattr("catalog.api.enrich.export_catalog_to_json", fake_export)
 
     app = create_app(cfg)
     app.testing = True
@@ -174,7 +176,7 @@ def test_enrich_ids(client, monkeypatch):
             updated += 1
         return updated
 
-    monkeypatch.setattr("catalog.api.fetch_imdb_ids", fake_fetch_ids)
+    monkeypatch.setattr("catalog.api.enrich.fetch_imdb_ids", fake_fetch_ids)
 
     resp = client.post("/movies/enrich/ids", json={})
     assert resp.status_code == 200
@@ -197,7 +199,7 @@ def test_enrich_metadata(client, monkeypatch):
             enriched += 1
         return enriched
 
-    monkeypatch.setattr("catalog.api.enrich_catalog", fake_enrich)
+    monkeypatch.setattr("catalog.api.enrich.enrich_catalog", fake_enrich)
 
     resp = client.post("/movies/enrich/metadata", json={})
     assert resp.status_code == 200
@@ -207,7 +209,7 @@ def test_enrich_metadata(client, monkeypatch):
     assert m.poster == "url" and m.runtime == 123
 
 
-def test_import_csv_file(client, tmp_path):
+def test_import_csv_file(client):
     rows = [
         ["id", "title", "year", "genres", "rating", "tags"],
         ["5", "Matrix", "1999", "action|sci-fi", "8.7", "neo|reality"],
@@ -233,13 +235,13 @@ def test_import_csv_file(client, tmp_path):
 def test_export_csv_file(client):
     resp = client.get("/movies/export/csv")
     assert resp.status_code == 200
-    
+
     assert resp.headers["Content-Type"].startswith("text/csv")
-    
+
     text = resp.data.decode("utf-8").splitlines()
     reader = csv.reader(text)
     rows = list(reader)
-    
+
     assert rows[0] == ["id", "title", "year", "genres", "rating", "tags"]
-    
+
     assert rows[1][1] == "Titanic"
