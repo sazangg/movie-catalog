@@ -1,12 +1,20 @@
 import logging
+import os
+import tempfile
 from dataclasses import asdict
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 from flask import Flask as _Flask
-from flask import abort, jsonify, request
+from flask import abort, jsonify, request, send_file
 
-from catalog.io_utils import export_catalog_to_json, import_catalog_from_json
+from catalog.io_utils import (
+    export_catalog_to_csv,
+    export_catalog_to_json,
+    import_catalog_from_csv,
+    import_catalog_from_json,
+)
+from catalog.metadata import enrich_catalog, fetch_imdb_ids
 from catalog.models import Catalog, Movie
 
 
@@ -139,6 +147,74 @@ def create_app(config: dict | None = None) -> Flask:
     def export_json_movies():
         movies = [asdict(m) for m in app.catalog]
         return jsonify(movies=movies), 200
+
+    @app.route("/movies/enrich/ids", methods=["POST"])
+    def enrich_movies_with_iids():
+        updated_count = fetch_imdb_ids(app.catalog)
+
+        path_str = app.config.get("CATALOG_PATH") or str(Path.home() / "catalog.json")
+        export_catalog_to_json(app.catalog, Path(path_str))
+
+        return jsonify(message="Update successful", updated=updated_count), 200
+
+    @app.route("/movies/enrich/metadata", methods=["POST"])
+    def enrich_movies_with_metadata():
+        enriched_count = enrich_catalog(app.catalog)
+
+        path_str = app.config.get("CATALOG_PATH") or str(Path.home() / "catalog.json")
+        export_catalog_to_json(app.catalog, Path(path_str))
+
+        return jsonify(message="Update successful", enriched=enriched_count), 200
+
+    @app.route("/movies/import/csv", methods=["POST"])
+    def import_csv_movies():
+        if "file" not in request.files:
+            abort(400, description="Missing 'file' part")
+        file = request.files["file"]
+        if file.filename == "":
+            abort(400, description="No file selected")
+
+        tmp_dir = tempfile.mkdtemp()
+        tmp_path = Path(tmp_dir) / file.filename
+        file.save(tmp_path)
+
+        new_catalog = import_catalog_from_csv(tmp_path)
+
+        path_str = app.config.get("CATALOG_PATH") or str(Path.home() / "catalog.json")
+        export_catalog_to_json(new_catalog, Path(path_str))
+
+        app.catalog = new_catalog
+
+        try:
+            os.remove(tmp_path)
+            os.rmdir(tmp_dir)
+        except OSError:
+            pass
+
+        return jsonify(message="Imported CSV", count=len(new_catalog)), 201
+
+    @app.route("/movies/export/csv", methods=["GET"])
+    def export_csv_movies():
+        tmp_dir = tempfile.mkdtemp()
+        tmp_path = Path(tmp_dir) / "export.csv"
+        export_catalog_to_csv(app.catalog, tmp_path)
+
+        response = send_file(
+            tmp_path,
+            mimetype="text/csv",
+            as_attachment=True,
+            download_name="movies.csv",
+        )
+
+        @response.call_on_close
+        def cleanup():
+            try:
+                os.remove(tmp_path)
+                os.rmdir(tmp_dir)
+            except OSError:
+                pass
+
+        return response
 
     return app
 

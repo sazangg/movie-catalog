@@ -41,10 +41,10 @@ async def _enrich_all(imdb_ids: list[str], max_concurrency: int = 5) -> Dict[str
         return meta
 
 
-def enrich_catalog(catalog: Catalog, max_concurrency: int = 5) -> None:
+def enrich_catalog(catalog: Catalog, max_concurrency: int = 5) -> int:
     imdb_ids = [m.imdb_id for m in catalog if m.imdb_id]
     metadata = asyncio.run(_enrich_all(imdb_ids, max_concurrency))
-
+    enriched_count = 0
     for movie in catalog:
         data = metadata.get(movie.imdb_id, {})
         if "error" in data:
@@ -58,6 +58,9 @@ def enrich_catalog(catalog: Catalog, max_concurrency: int = 5) -> None:
                 if runtime_str and runtime_str != "N/A"
                 else None
             )
+            enriched_count += 1
+
+    return enriched_count
 
 
 async def fetch_id_for_title(title: str, session: aiohttp.ClientSession) -> str | None:
@@ -92,11 +95,16 @@ async def _fetch_ids(
         return id_map
 
 
-def fetch_imdb_ids(catalog: Catalog, max_concurrency: int = 5) -> None:
+def fetch_imdb_ids(catalog: Catalog, max_concurrency: int = 5) -> int:
     titles = [m.title for m in catalog]
     id_map = asyncio.run(_fetch_ids(titles, max_concurrency))
+    updated_count = 0
     for movie in catalog:
-        movie.imdb_id = id_map.get(movie.title)
+        if not movie.imdb_id or movie.imdb_id != id_map.get(movie.title):
+            movie.imdb_id = id_map.get(movie.title)
+            updated_count += 1
+
+    return updated_count
 
 
 def full_enrich(catalog: Catalog, max_concurrency: int = 5) -> None:
