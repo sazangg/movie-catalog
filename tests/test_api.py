@@ -13,7 +13,7 @@ def client(tmp_path, monkeypatch):
     seed = Catalog()
     seed.add_movie(Movie(id=1, title="Titanic", year=1992))
 
-    cfg = {"CATALOG_PATH": str(tmp_path / "movies.json")}
+    cfg = {"CATALOG_PATH": str(tmp_path / "movies.json"), "API_KEY": "supersecret123"}
 
     monkeypatch.setattr("catalog.api.api.load_catalog", lambda path: seed)
 
@@ -41,7 +41,9 @@ def client(tmp_path, monkeypatch):
 
 
 def test_list_movies(client):
-    resp = client.get("/movies")
+    correct = client.application.config["API_KEY"]
+    headers = {"X-API-Key": correct}
+    resp = client.get("/movies", headers=headers)
     assert resp.status_code == 200
     data = resp.get_json()
     assert "movies" in data
@@ -50,8 +52,9 @@ def test_list_movies(client):
 
 
 def test_get_movie_by_id_success(client):
-    # Seed includes movie with id=1
-    resp = client.get("/movies/1")
+    correct = client.application.config["API_KEY"]
+    headers = {"X-API-Key": correct}
+    resp = client.get("/movies/1", headers=headers)
     assert resp.status_code == 200
 
     data = resp.get_json()
@@ -60,7 +63,9 @@ def test_get_movie_by_id_success(client):
 
 
 def test_get_movie_by_id_not_found(client):
-    resp = client.get("/movies/999")
+    correct = client.application.config["API_KEY"]
+    headers = {"X-API-Key": correct}
+    resp = client.get("/movies/999", headers=headers)
     assert resp.status_code == 404
     err = resp.get_json()
     assert "not found" in err.get("error", "").lower()
@@ -68,7 +73,9 @@ def test_get_movie_by_id_not_found(client):
 
 def test_add_movie_success(client):
     payload = {"id": 2, "title": "Inception", "year": 2010}
-    resp = client.post("/movies", json=payload)
+    correct = client.application.config["API_KEY"]
+    headers = {"X-API-Key": correct}
+    resp = client.post("/movies", json=payload, headers=headers)
     assert resp.status_code == 201
 
     data = resp.get_json()
@@ -91,7 +98,9 @@ def test_add_movie_success(client):
     ],
 )
 def test_add_movie_bad_request(client, bad_payload):
-    resp = client.post("/movies", json=bad_payload)
+    correct = client.application.config["API_KEY"]
+    headers = {"X-API-Key": correct}
+    resp = client.post("/movies", json=bad_payload, headers=headers)
     assert resp.status_code == 400
     err = resp.get_json()
     assert "Missing fields" in err.get("message", "") or "Missing fields" in err.get(
@@ -100,7 +109,11 @@ def test_add_movie_bad_request(client, bad_payload):
 
 
 def test_update_movie_success(client):
-    resp = client.put("/movies/1", json={"title": "New Titanic", "rating": 8.1})
+    correct = client.application.config["API_KEY"]
+    headers = {"X-API-Key": correct}
+    resp = client.put(
+        "/movies/1", json={"title": "New Titanic", "rating": 8.1}, headers=headers
+    )
     assert resp.status_code == 200
     data = resp.get_json()
     assert data["movie"]["title"] == "New Titanic"
@@ -112,17 +125,21 @@ def test_update_movie_success(client):
 
 
 def test_update_movie_not_allowed_field(client):
-    resp = client.put("/movies/1", json={"id": 999, "foo": "bar"})
+    correct = client.application.config["API_KEY"]
+    headers = {"X-API-Key": correct}
+    resp = client.put("/movies/1", json={"id": 999, "foo": "bar"}, headers=headers)
     assert resp.status_code == 400
     err = resp.get_json()
     assert "not allowed" in err["error"].lower()
 
 
 def test_delete_movie_success(client):
-    resp = client.delete("/movies/1")
+    correct = client.application.config["API_KEY"]
+    headers = {"X-API-Key": correct}
+    resp = client.delete("/movies/1", headers=headers)
     assert resp.status_code == 204
 
-    resp2 = client.get("/movies/1")
+    resp2 = client.get("/movies/1", headers=headers)
     assert resp2.status_code == 404
 
     exp = client.exported
@@ -134,7 +151,9 @@ def test_delete_movie_success(client):
 
 
 def test_delete_movie_not_found(client):
-    resp = client.delete("/movies/999")
+    correct = client.application.config["API_KEY"]
+    headers = {"X-API-Key": correct}
+    resp = client.delete("/movies/999", headers=headers)
     assert resp.status_code == 404
     err = resp.get_json()
     assert "not found" in err["error"].lower()
@@ -145,25 +164,33 @@ def test_import_json(client):
         {"id": 10, "title": "X", "year": 2020},
         {"id": 11, "title": "Y", "year": 2021},
     ]
-    resp = client.post("/movies/import/json", json={"movies": new_list})
+    correct = client.application.config["API_KEY"]
+    headers = {"X-API-Key": correct}
+    resp = client.post(
+        "/movies/import/json", json={"movies": new_list}, headers=headers
+    )
     assert resp.status_code == 201
     data = resp.get_json()
     assert data["count"] == 2
 
-    resp2 = client.get("/movies")
+    resp2 = client.get("/movies", headers=headers)
     titles = [m["title"] for m in resp2.get_json()["movies"]]
     assert titles == ["X", "Y"]
 
 
 def test_import_json_bad_payload(client):
-    resp = client.post("/movies/import/json", json={})
+    correct = client.application.config["API_KEY"]
+    headers = {"X-API-Key": correct}
+    resp = client.post("/movies/import/json", json={}, headers=headers)
     assert resp.status_code == 400
     err = resp.get_json()
     assert "must provide json with a 'movies' list".lower() in err["error"].lower()
 
 
 def test_export_json(client):
-    resp = client.get("/movies/export/json")
+    correct = client.application.config["API_KEY"]
+    headers = {"X-API-Key": correct}
+    resp = client.get("/movies/export/json", headers=headers)
     assert resp.status_code == 200
     data = resp.get_json()
     assert isinstance(data["movies"], list)
@@ -180,12 +207,14 @@ def test_enrich_ids(client, monkeypatch):
 
     monkeypatch.setattr("catalog.api.enrich.enrich_ids_service", fake_fetch_ids)
 
-    resp = client.post("/movies/enrich/ids", json={})
+    correct = client.application.config["API_KEY"]
+    headers = {"X-API-Key": correct}
+    resp = client.post("/movies/enrich/ids", json={}, headers=headers)
     assert resp.status_code == 200
     data = resp.get_json()
     assert data["updated"] == 1
 
-    resp2 = client.get("/movies/1")
+    resp2 = client.get("/movies/1", headers=headers)
     assert resp2.get_json()["movie"]["imdb_id"] == "ttTEST"
 
 
@@ -203,7 +232,9 @@ def test_enrich_metadata(client, monkeypatch):
 
     monkeypatch.setattr("catalog.api.enrich.enrich_metadata_service", fake_enrich)
 
-    resp = client.post("/movies/enrich/metadata", json={})
+    correct = client.application.config["API_KEY"]
+    headers = {"X-API-Key": correct}
+    resp = client.post("/movies/enrich/metadata", json={}, headers=headers)
     assert resp.status_code == 200
     data = resp.get_json()
     assert data["enriched"] == 1
@@ -222,20 +253,27 @@ def test_import_csv_file(client):
     buf.seek(0)
 
     data = {"file": (io.BytesIO(buf.read().encode("utf-8")), "movies.csv")}
+    correct = client.application.config["API_KEY"]
+    headers = {"X-API-Key": correct}
     resp = client.post(
-        "/movies/import/csv", data=data, content_type="multipart/form-data"
+        "/movies/import/csv",
+        data=data,
+        content_type="multipart/form-data",
+        headers=headers,
     )
     assert resp.status_code == 201
     body = resp.get_json()
     assert body["count"] == 1
 
-    resp2 = client.get("/movies")
+    resp2 = client.get("/movies", headers=headers)
     titles = [m["title"] for m in resp2.get_json()["movies"]]
     assert titles == ["Matrix"]
 
 
 def test_export_csv_file(client):
-    resp = client.get("/movies/export/csv")
+    correct = client.application.config["API_KEY"]
+    headers = {"X-API-Key": correct}
+    resp = client.get("/movies/export/csv", headers=headers)
     assert resp.status_code == 200
 
     assert resp.headers["Content-Type"].startswith("text/csv")
