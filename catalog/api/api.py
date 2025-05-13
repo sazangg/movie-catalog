@@ -1,14 +1,13 @@
 from flask import jsonify
+from werkzeug.exceptions import HTTPException
 
 from catalog.api.enrich import enrich_bp
 from catalog.api.import_export import io_bp
 from catalog.api.movies import movies_bp
+from catalog.api.my_flask import Flask
 from catalog.config import Config
 from catalog.logging_config import configure_logging
 from catalog.services import load_catalog
-
-
-from catalog.api.my_flask import Flask
 
 
 def create_app(config: dict | None = None) -> Flask:
@@ -31,9 +30,14 @@ def create_app(config: dict | None = None) -> Flask:
     @app.errorhandler(404)
     def handle_not_found(err):
         return jsonify(error=err.description), 404
-    
+
     @app.errorhandler(ValueError)
     def handle_bad_data(err):
         return jsonify(error=str(err)), 400
+
+    @app.errorhandler(HTTPException)
+    def handle_http_exception(e: HTTPException):
+        payload = {"error": e.description, "message": e.description}
+        return jsonify(payload), e.code
 
     return app

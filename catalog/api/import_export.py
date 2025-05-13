@@ -2,19 +2,21 @@ import shutil
 from typing import cast
 
 from flask import Blueprint, abort, current_app, jsonify, request, send_file
-from catalog.api.my_flask import Flask
 
+from catalog.api.auth import require_api_key
+from catalog.api.my_flask import Flask
 from catalog.services import (
     export_csv_service,
     export_json_service,
     import_csv_service,
-    import_json_service
+    import_json_service,
 )
 
 io_bp = Blueprint("io", __name__, url_prefix="/movies")
 
 
 @io_bp.route("/import/json", methods=["POST"])
+@require_api_key
 def import_json_movies():
     app = cast(Flask, current_app)
     payload = request.get_json(force=True)
@@ -24,6 +26,7 @@ def import_json_movies():
 
 
 @io_bp.route("/export/json", methods=["GET"])
+@require_api_key
 def export_json_movies():
     app = cast(Flask, current_app)
     movies = export_json_service(app.catalog)
@@ -31,10 +34,11 @@ def export_json_movies():
 
 
 @io_bp.route("/import/csv", methods=["POST"])
+@require_api_key
 def import_csv_movies():
     if "file" not in request.files:
         abort(400, description="Missing 'file' part")
-    
+
     uploaded_file = request.files["file"]
     app = cast(Flask, current_app)
     app.catalog = import_csv_service(uploaded_file, current_app.config["CATALOG_PATH"])
@@ -43,6 +47,7 @@ def import_csv_movies():
 
 
 @io_bp.route("/export/csv", methods=["GET"])
+@require_api_key
 def export_csv_movies():
     app = cast(Flask, current_app)
     tmp_path = export_csv_service(app.catalog)
