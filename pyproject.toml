@@ -12,18 +12,10 @@ description = "A Flask API to manage your movie collection"
 authors = [
   { name="Younes Lesfer", email="younes.lesfer@gmail.com" }
 ]
-# Specify Python version compatibility
+
 requires-python = ">=3.10"
-# License for PyPI metadata
-license = "MIT"
-# Classifiers for PyPI
-classifiers = [
-  "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.10",
-  "Framework :: Flask",
-  "License :: OSI Approved :: MIT License"
-]
-# Runtime dependencies
+license = { text = "MIT" }
+
 dependencies = [
   "flask>=2.2,<3.0",
   "aiohttp>=3.8",
@@ -36,8 +28,13 @@ dev = [
   "mypy>=1.0",
   "python-dotenv>=0.21.1"
 ]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Framework :: Flask",
+  "Operating System :: OS Independent",
+]
 
-# Entry point for console script
 [project.scripts]
 movie-catalog = "catalog.api:main"
 
