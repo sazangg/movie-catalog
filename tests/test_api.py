@@ -1,5 +1,6 @@
 import csv
 import io
+from pathlib import Path
 
 import pytest
 from catalog.api.api import create_app
@@ -14,7 +15,7 @@ def client(tmp_path, monkeypatch):
 
     cfg = {"CATALOG_PATH": str(tmp_path / "movies.json")}
 
-    monkeypatch.setattr("catalog.api.api.import_catalog_from_json", lambda path: seed)
+    monkeypatch.setattr("catalog.api.api.load_catalog", lambda path: seed)
 
     exported = {}
 
@@ -26,9 +27,10 @@ def client(tmp_path, monkeypatch):
 
         return real_export(catalog, path)
 
-    monkeypatch.setattr("catalog.api.movies.export_catalog_to_json", fake_export)
-    monkeypatch.setattr("catalog.api.import_export.export_catalog_to_json", fake_export)
-    monkeypatch.setattr("catalog.api.enrich.export_catalog_to_json", fake_export)
+    monkeypatch.setattr(
+        "catalog.api.movies.save_catalog",
+        lambda catalog, path: fake_export(catalog, Path(path)),
+    )
 
     app = create_app(cfg)
     app.testing = True
@@ -45,6 +47,23 @@ def test_list_movies(client):
     assert "movies" in data
     titles = [m["title"] for m in data["movies"]]
     assert titles == ["Titanic"]
+
+
+def test_get_movie_by_id_success(client):
+    # Seed includes movie with id=1
+    resp = client.get("/movies/1")
+    assert resp.status_code == 200
+
+    data = resp.get_json()
+    assert data["movie"]["id"] == 1
+    assert data["movie"]["title"] == "Titanic"
+
+
+def test_get_movie_by_id_not_found(client):
+    resp = client.get("/movies/999")
+    assert resp.status_code == 404
+    err = resp.get_json()
+    assert "not found" in err.get("error", "").lower()
 
 
 def test_add_movie_success(client):
@@ -80,23 +99,6 @@ def test_add_movie_bad_request(client, bad_payload):
     )
 
 
-def test_get_movie_by_id_success(client):
-    # Seed includes movie with id=1
-    resp = client.get("/movies/1")
-    assert resp.status_code == 200
-
-    data = resp.get_json()
-    assert data["movie"]["id"] == 1
-    assert data["movie"]["title"] == "Titanic"
-
-
-def test_get_movie_by_id_not_found(client):
-    resp = client.get("/movies/999")
-    assert resp.status_code == 404
-    err = resp.get_json()
-    assert "not found" in err.get("error", "").lower()
-
-
 def test_update_movie_success(client):
     resp = client.put("/movies/1", json={"title": "New Titanic", "rating": 8.1})
     assert resp.status_code == 200
@@ -114,6 +116,28 @@ def test_update_movie_not_allowed_field(client):
     assert resp.status_code == 400
     err = resp.get_json()
     assert "not allowed" in err["error"].lower()
+
+
+def test_delete_movie_success(client):
+    resp = client.delete("/movies/1")
+    assert resp.status_code == 204
+
+    resp2 = client.get("/movies/1")
+    assert resp2.status_code == 404
+
+    exp = client.exported
+
+    assert exp["path"].name == "movies.json"
+
+    ids = [m.id for m in exp["catalog"]]
+    assert 1 not in ids
+
+
+def test_delete_movie_not_found(client):
+    resp = client.delete("/movies/999")
+    assert resp.status_code == 404
+    err = resp.get_json()
+    assert "not found" in err["error"].lower()
 
 
 def test_import_json(client):
@@ -146,28 +170,6 @@ def test_export_json(client):
     assert data["movies"][0]["title"] == "Titanic"
 
 
-def test_delete_movie_success(client):
-    resp = client.delete("/movies/1")
-    assert resp.status_code == 204
-
-    resp2 = client.get("/movies/1")
-    assert resp2.status_code == 404
-
-    exp = client.exported
-
-    assert exp["path"].name == "movies.json"
-
-    ids = [m.id for m in exp["catalog"]]
-    assert 1 not in ids
-
-
-def test_delete_movie_not_found(client):
-    resp = client.delete("/movies/999")
-    assert resp.status_code == 404
-    err = resp.get_json()
-    assert "not found" in err["error"].lower()
-
-
 def test_enrich_ids(client, monkeypatch):
     def fake_fetch_ids(cat, max_concurrency=2):
         updated = 0
@@ -176,7 +178,7 @@ def test_enrich_ids(client, monkeypatch):
             updated += 1
         return updated
 
-    monkeypatch.setattr("catalog.api.enrich.fetch_imdb_ids", fake_fetch_ids)
+    monkeypatch.setattr("catalog.api.enrich.enrich_ids_service", fake_fetch_ids)
 
     resp = client.post("/movies/enrich/ids", json={})
     assert resp.status_code == 200
@@ -199,7 +201,7 @@ def test_enrich_metadata(client, monkeypatch):
             enriched += 1
         return enriched
 
-    monkeypatch.setattr("catalog.api.enrich.enrich_catalog", fake_enrich)
+    monkeypatch.setattr("catalog.api.enrich.enrich_metadata_service", fake_enrich)
 
     resp = client.post("/movies/enrich/metadata", json={})
     assert resp.status_code == 200

@@ -1,24 +1,24 @@
+from flask import jsonify
+
 from catalog.api.enrich import enrich_bp
 from catalog.api.import_export import io_bp
 from catalog.api.movies import movies_bp
-from flask import Flask as _Flask, jsonify
-
-from catalog.io_utils import import_catalog_from_json
+from catalog.config import Config
 from catalog.logging_config import configure_logging
-from catalog.models import Catalog
+from catalog.services import load_catalog
 
 
-class Flask(_Flask):
-    catalog: Catalog
+from catalog.api.my_flask import Flask
 
 
-def create_app(config = None) -> Flask:
+def create_app(config: dict | None = None) -> Flask:
     configure_logging()
 
     app = Flask(__name__)
+    app.config.from_object(Config)
     app.config.update(config or {})
 
-    app.catalog = import_catalog_from_json(app.config.get("CATALOG_PATH"))
+    app.catalog = load_catalog(app.config["CATALOG_PATH"])
 
     app.register_blueprint(movies_bp)
     app.register_blueprint(io_bp)
@@ -31,5 +31,9 @@ def create_app(config = None) -> Flask:
     @app.errorhandler(404)
     def handle_not_found(err):
         return jsonify(error=err.description), 404
+    
+    @app.errorhandler(ValueError)
+    def handle_bad_data(err):
+        return jsonify(error=str(err)), 400
 
     return app
