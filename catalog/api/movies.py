@@ -1,9 +1,12 @@
 from dataclasses import asdict
+
+# from functools import lru_cache
 from typing import cast
 
 from flask import Blueprint, abort, current_app, jsonify, request
-from catalog.api.my_flask import Flask
 
+from catalog.api.auth import require_api_key
+from catalog.api.my_flask import Flask
 from catalog.services import (
     add_movie_service,
     delete_movie_service,
@@ -17,12 +20,19 @@ movies_bp = Blueprint("movies", __name__, url_prefix="/movies")
 
 
 @movies_bp.route("", methods=["GET"])
+@require_api_key
 def list_movies():
     app = cast(Flask, current_app)
+
+    # @lru_cache(maxsize=1)
+    # def load_movies_cached() -> list[dict]:
+    #     return load_movies_service(app.catalog)
+
     return jsonify(movies=load_movies_service(app.catalog)), 200
 
 
 @movies_bp.route("/<int:movie_id>", methods=["GET"])
+@require_api_key
 def get_movie(movie_id: int):
     app = cast(Flask, current_app)
     m = load_movie_by_id_service(app.catalog, movie_id)
@@ -32,6 +42,7 @@ def get_movie(movie_id: int):
 
 
 @movies_bp.route("", methods=["POST"])
+@require_api_key
 def add_movie():
     app = cast(Flask, current_app)
     data = request.get_json(force=True)
@@ -42,6 +53,7 @@ def add_movie():
 
 
 @movies_bp.route("/<int:movie_id>", methods=["PUT"])
+@require_api_key
 def update_movie(movie_id: int):
     app = cast(Flask, current_app)
     data = request.get_json(force=True)
@@ -55,6 +67,7 @@ def update_movie(movie_id: int):
 
 
 @movies_bp.route("/<int:movie_id>", methods=["DELETE"])
+@require_api_key
 def delete_movie(movie_id: int):
     app = cast(Flask, current_app)
     removed = delete_movie_service(app.catalog, movie_id)

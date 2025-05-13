@@ -1,4 +1,4 @@
-import functools
+from functools import wraps
 import os
 import time
 from collections import Counter, defaultdict
@@ -30,7 +30,7 @@ def movie_pairs(catalog: Catalog) -> Iterator[Tuple[Movie, Movie]]:
 
 def retry(times: int):
     def decorator(fn: Callable):
-        @functools.wraps(fn)
+        @wraps(fn)
         def wrapper(*args, **kwargs):
             for attempt in range(times):
                 try:
@@ -45,7 +45,7 @@ def retry(times: int):
 
 
 def timed(fn: Callable):
-    @functools.wraps(fn)
+    @wraps(fn)
     def wrapper(*args, **kwargs):
         start = time.perf_counter()
         result = fn(*args, **kwargs)
