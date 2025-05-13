@@ -2,6 +2,9 @@
 requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools]
+packages = ["catalog"]
+
 [project]
 name = "movie-catalog"
 version = "0.1.0"
@@ -13,6 +16,13 @@ authors = [
 requires-python = ">=3.10"
 # License for PyPI metadata
 license = "MIT"
+# Classifiers for PyPI
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Framework :: Flask",
+  "License :: OSI Approved :: MIT License"
+]
 # Runtime dependencies
 dependencies = [
   "flask>=2.2,<3.0",
