@@ -1,0 +1,65 @@
+from dataclasses import asdict
+from typing import cast
+
+from flask import Blueprint, abort, current_app, jsonify, request
+from catalog.api.my_flask import Flask
+
+from catalog.services import (
+    add_movie_service,
+    delete_movie_service,
+    load_movie_by_id_service,
+    load_movies_service,
+    save_catalog,
+    update_movie_service,
+)
+
+movies_bp = Blueprint("movies", __name__, url_prefix="/movies")
+
+
+@movies_bp.route("", methods=["GET"])
+def list_movies():
+    app = cast(Flask, current_app)
+    return jsonify(movies=load_movies_service(app.catalog)), 200
+
+
+@movies_bp.route("/<int:movie_id>", methods=["GET"])
+def get_movie(movie_id: int):
+    app = cast(Flask, current_app)
+    m = load_movie_by_id_service(app.catalog, movie_id)
+    if not m:
+        abort(404, description=f"Movie {movie_id} not found")
+    return jsonify(movie=asdict(m)), 200
+
+
+@movies_bp.route("", methods=["POST"])
+def add_movie():
+    app = cast(Flask, current_app)
+    data = request.get_json(force=True)
+
+    movie = add_movie_service(app.catalog, data)
+    save_catalog(app.catalog, current_app.config["CATALOG_PATH"])
+    return jsonify(movie=asdict(movie)), 201
+
+
+@movies_bp.route("/<int:movie_id>", methods=["PUT"])
+def update_movie(movie_id: int):
+    app = cast(Flask, current_app)
+    data = request.get_json(force=True)
+
+    m = update_movie_service(app.catalog, movie_id, data)
+    if not m:
+        abort(404, description=f"Movie {movie_id} not found")
+
+    save_catalog(app.catalog, current_app.config["CATALOG_PATH"])
+    return jsonify(movie=asdict(m)), 200
+
+
+@movies_bp.route("/<int:movie_id>", methods=["DELETE"])
+def delete_movie(movie_id: int):
+    app = cast(Flask, current_app)
+    removed = delete_movie_service(app.catalog, movie_id)
+    if not removed:
+        abort(404, description=f"Movie {movie_id} not found")
+
+    save_catalog(app.catalog, current_app.config["CATALOG_PATH"])
+    return "", 204

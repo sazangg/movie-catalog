@@ -10,7 +10,10 @@ from .models import Catalog, Movie
 logger = logging.getLogger(__name__)
 
 
-def export_catalog_to_csv(catalog: Catalog, path: Path | None = None) -> Path:
+def export_catalog_to_csv(catalog: Catalog, path: Path | str | None = None) -> Path:
+    if isinstance(path, str):
+        path = Path(path)
+
     logger.debug("Export catalog as CSV to path: %s", path)
     if path is None:
         path = Path.home() / "catalog.csv"
@@ -77,7 +80,10 @@ def import_catalog_from_csv(path: Path | None = None) -> "Catalog":
     return cat
 
 
-def export_catalog_to_json(catalog: Catalog, path: Path | None = None) -> Path:
+def export_catalog_to_json(catalog: Catalog, path: Path | str | None = None) -> Path:
+    if isinstance(path, str):
+        path = Path(path)
+
     logger.debug("Starting process to export catalog to json")
     try:
         if path is None:
