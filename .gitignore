@@ -5,5 +5,8 @@ dist/
 build/
 *.egg-info/
 logs/
+.env
 certs/
-./certs/
+/certs/server.key
+./certs/server.key
+

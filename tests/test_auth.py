@@ -3,6 +3,8 @@ from pathlib import Path
 import pytest
 from catalog.api.api import create_app
 
+VALID_CREDS = {"username": "admin", "password": "password123"}
+
 
 @pytest.fixture
 def client(tmp_path, monkeypatch):
@@ -11,7 +13,12 @@ def client(tmp_path, monkeypatch):
     seed = Catalog()
     seed.add_movie(Movie(id=1, title="Titanic", year=1992))
 
-    cfg = {"CATALOG_PATH": str(tmp_path / "movies.json"), "API_KEY": "supersecret123"}
+    cfg = {
+        "CATALOG_PATH": str(tmp_path / "movies.json"),
+        "API_KEY": "supersecret123",
+        "JWT_SECRET_KEY": "super-jwt-secret",
+        "JWT_ACCESS_TOKEN_EXPIRES": False,
+    }
 
     monkeypatch.setattr("catalog.api.api.load_catalog", lambda path: seed)
 
@@ -35,6 +42,16 @@ def client(tmp_path, monkeypatch):
     client = app.test_client()
     client.app = app
     client.exported = exported
+
+    login_resp = client.post("/auth/login", json=VALID_CREDS)
+    assert login_resp.status_code == 200
+    token = login_resp.get_json()["access_token"]
+
+    client.environ_base = {
+        **client.environ_base,
+        "HTTP_AUTHORIZATION": f"Bearer {token}",
+    }
+
     return client
 
 
