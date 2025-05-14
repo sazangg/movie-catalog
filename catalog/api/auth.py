@@ -4,6 +4,7 @@ from typing import Callable
 
 from flask import Blueprint, abort, current_app, jsonify, request
 from flask_jwt_extended import create_access_token, get_jwt, jwt_required
+from catalog.api.extensions import limiter
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
@@ -28,6 +29,7 @@ def require_api_key(fn: Callable):
 
 
 @auth_bp.route("/login", methods=["POST"])
+@limiter.limit(limit_value="6 per minute")
 def login():
     data = request.get_json(force=True)
     username = data.get("username")
@@ -44,6 +46,7 @@ def login():
     )
     return jsonify(access_token=token), 200
 
+
 def requires_role(role: str = "admin"):
     def decorator(fn):
         @jwt_required()
@@ -55,4 +58,5 @@ def requires_role(role: str = "admin"):
             return fn(*args, **kwargs)
 
         return wrapper
+
     return decorator
