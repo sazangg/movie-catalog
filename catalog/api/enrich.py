@@ -1,7 +1,7 @@
 from typing import cast
 from flask import Blueprint, current_app, jsonify, request
 from catalog.api.my_flask import Flask
-from catalog.api.auth import require_api_key, jwt_admin_required
+from catalog.api.auth import require_api_key, requires_role
 from catalog.services import enrich_ids_service, enrich_metadata_service, save_catalog
 
 enrich_bp = Blueprint("enrich", __name__, url_prefix="/movies")
@@ -9,7 +9,7 @@ enrich_bp = Blueprint("enrich", __name__, url_prefix="/movies")
 
 @enrich_bp.route("/enrich/ids", methods=["POST"])
 @require_api_key
-@jwt_admin_required
+@requires_role("admin")
 def enrich_movies_with_iids():
     payload = request.get_json(silent=True) or {}
     max_conc = payload.get("max_concurrency", 5)
@@ -22,7 +22,7 @@ def enrich_movies_with_iids():
 
 @enrich_bp.route("/enrich/metadata", methods=["POST"])
 @require_api_key
-@jwt_admin_required
+@requires_role("admin")
 def enrich_movies_with_metadata():
     payload = request.get_json(silent=True) or {}
     max_conc = payload.get("max_concurrency", 5)
