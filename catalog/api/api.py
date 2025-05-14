@@ -46,6 +46,7 @@ def create_app(config: dict | None = None) -> Flask:
         frame_options="DENY",
     )
     # csrf.init_app(app)
+    # cache.init_app(app)
 
     app.register_blueprint(movies_bp)
     app.register_blueprint(io_bp)
