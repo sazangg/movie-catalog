@@ -1,5 +1,8 @@
 from flask import jsonify
+from flask_cors import CORS
 from flask_jwt_extended import JWTManager
+from flask_seasurf import SeaSurf
+from flask_talisman import Talisman
 from werkzeug.exceptions import HTTPException
 
 from catalog.api.auth import auth_bp
@@ -12,6 +15,8 @@ from catalog.config import Config
 from catalog.logging_config import configure_logging
 from catalog.services import load_catalog
 
+csrf = SeaSurf()
+
 
 def create_app(config: dict | None = None) -> Flask:
     configure_logging()
@@ -22,9 +27,25 @@ def create_app(config: dict | None = None) -> Flask:
 
     app.catalog = load_catalog(app.config["CATALOG_PATH"])
 
+    CORS(
+        app,
+        origins=["http://localhost:3000"],
+        methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["Content-Type", "X-API-Key", "Authorization"],
+    )
     JWTManager(app)
-    
     limiter.init_app(app)
+    Talisman(
+        app,
+        content_security_policy={
+            "default-src": ["'self'"],
+            # you can add cdn domains, etc.
+        },
+        force_https=False,  # set True if you ALWAYS run HTTPS
+        strict_transport_security=True,
+        frame_options="DENY",
+    )
+    csrf.init_app(app)
 
     app.register_blueprint(movies_bp)
     app.register_blueprint(io_bp)
