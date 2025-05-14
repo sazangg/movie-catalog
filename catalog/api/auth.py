@@ -44,14 +44,15 @@ def login():
     )
     return jsonify(access_token=token), 200
 
+def requires_role(role: str = "admin"):
+    def decorator(fn):
+        @jwt_required()
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            claims = get_jwt()
+            if role not in claims["roles"]:
+                abort(403, description=f"Access not authorized for role: {role}")
+            return fn(*args, **kwargs)
 
-def jwt_admin_required(fn):
-    @jwt_required()
-    @wraps(fn)
-    def wrapper(*args, **kwargs):
-        claims = get_jwt()
-        if "admin" not in claims["roles"]:
-            abort(403, description="Access not authorized")
-        return fn(*args, **kwargs)
-
-    return wrapper
+        return wrapper
+    return decorator
