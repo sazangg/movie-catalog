@@ -2,10 +2,11 @@ from flask import jsonify
 from flask_jwt_extended import JWTManager
 from werkzeug.exceptions import HTTPException
 
+from catalog.api.auth import auth_bp
 from catalog.api.enrich import enrich_bp
+from catalog.api.extensions import limiter
 from catalog.api.import_export import io_bp
 from catalog.api.movies import movies_bp
-from catalog.api.auth import auth_bp
 from catalog.api.my_flask import Flask
 from catalog.config import Config
 from catalog.logging_config import configure_logging
@@ -22,6 +23,8 @@ def create_app(config: dict | None = None) -> Flask:
     app.catalog = load_catalog(app.config["CATALOG_PATH"])
 
     JWTManager(app)
+    
+    limiter.init_app(app)
 
     app.register_blueprint(movies_bp)
     app.register_blueprint(io_bp)
@@ -44,5 +47,9 @@ def create_app(config: dict | None = None) -> Flask:
     def handle_http_exception(e: HTTPException):
         payload = {"error": e.description, "message": e.description}
         return jsonify(payload), e.code
+
+    @app.errorhandler(429)
+    def handle_rate_limits(e):
+        return jsonify(error="Rate limit exceeded", details=str(e.description)), 429
 
     return app
