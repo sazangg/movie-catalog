@@ -45,7 +45,7 @@ def create_app(config: dict | None = None) -> Flask:
         strict_transport_security=True,
         frame_options="DENY",
     )
-    csrf.init_app(app)
+    # csrf.init_app(app)
 
     app.register_blueprint(movies_bp)
     app.register_blueprint(io_bp)
