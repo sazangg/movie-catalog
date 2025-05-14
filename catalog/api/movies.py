@@ -5,7 +5,7 @@ from typing import cast
 
 from flask import Blueprint, abort, current_app, jsonify, request
 
-from catalog.api.auth import require_api_key
+from catalog.api.auth import require_api_key, jwt_admin_required
 from catalog.api.my_flask import Flask
 from catalog.services import (
     add_movie_service,
@@ -21,6 +21,7 @@ movies_bp = Blueprint("movies", __name__, url_prefix="/movies")
 
 @movies_bp.route("", methods=["GET"])
 @require_api_key
+@jwt_admin_required
 def list_movies():
     app = cast(Flask, current_app)
 
@@ -33,6 +34,7 @@ def list_movies():
 
 @movies_bp.route("/<int:movie_id>", methods=["GET"])
 @require_api_key
+@jwt_admin_required
 def get_movie(movie_id: int):
     app = cast(Flask, current_app)
     m = load_movie_by_id_service(app.catalog, movie_id)
@@ -43,6 +45,7 @@ def get_movie(movie_id: int):
 
 @movies_bp.route("", methods=["POST"])
 @require_api_key
+@jwt_admin_required
 def add_movie():
     app = cast(Flask, current_app)
     data = request.get_json(force=True)
@@ -54,6 +57,7 @@ def add_movie():
 
 @movies_bp.route("/<int:movie_id>", methods=["PUT"])
 @require_api_key
+@jwt_admin_required
 def update_movie(movie_id: int):
     app = cast(Flask, current_app)
     data = request.get_json(force=True)
@@ -68,6 +72,7 @@ def update_movie(movie_id: int):
 
 @movies_bp.route("/<int:movie_id>", methods=["DELETE"])
 @require_api_key
+@jwt_admin_required
 def delete_movie(movie_id: int):
     app = cast(Flask, current_app)
     removed = delete_movie_service(app.catalog, movie_id)

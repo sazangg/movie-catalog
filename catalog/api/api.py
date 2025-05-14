@@ -1,9 +1,11 @@
 from flask import jsonify
+from flask_jwt_extended import JWTManager
 from werkzeug.exceptions import HTTPException
 
 from catalog.api.enrich import enrich_bp
 from catalog.api.import_export import io_bp
 from catalog.api.movies import movies_bp
+from catalog.api.auth import auth_bp
 from catalog.api.my_flask import Flask
 from catalog.config import Config
 from catalog.logging_config import configure_logging
@@ -19,9 +21,12 @@ def create_app(config: dict | None = None) -> Flask:
 
     app.catalog = load_catalog(app.config["CATALOG_PATH"])
 
+    JWTManager(app)
+
     app.register_blueprint(movies_bp)
     app.register_blueprint(io_bp)
     app.register_blueprint(enrich_bp)
+    app.register_blueprint(auth_bp)
 
     @app.errorhandler(400)
     def handle_bad_request(err):
