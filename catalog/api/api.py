@@ -1,8 +1,8 @@
 from flask import jsonify
-from flask_cors import CORS
+from flask_cors import CORS  # type: ignore[import-untyped]
 from flask_jwt_extended import JWTManager
-from flask_seasurf import SeaSurf
-from flask_talisman import Talisman
+from flask_seasurf import SeaSurf  # type: ignore[import-untyped]
+from flask_talisman import Talisman  # type: ignore[import-untyped]
 from werkzeug.exceptions import HTTPException
 
 from catalog.api.auth import auth_bp
