@@ -1,4 +1,4 @@
-from flask import jsonify
+from flask import Response, jsonify
 from flask_cors import CORS  # type: ignore[import-untyped]
 from flask_jwt_extended import JWTManager
 from flask_seasurf import SeaSurf  # type: ignore[import-untyped]
@@ -66,9 +66,9 @@ def create_app(config: dict | None = None) -> Flask:
         return jsonify(error=str(err)), 400
 
     @app.errorhandler(HTTPException)
-    def handle_http_exception(e: HTTPException):
+    def handle_http_exception(e: HTTPException) -> tuple[Response, int]:
         payload = {"error": e.description, "message": e.description}
-        return jsonify(payload), e.code
+        return jsonify(payload), e.code if e.code else 500
 
     @app.errorhandler(429)
     def handle_rate_limits(e):
